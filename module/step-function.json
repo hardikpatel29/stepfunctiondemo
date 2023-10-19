@@ -1,0 +1,148 @@
+{
+    "Comment": "A description of my state machine",
+    "StartAt": "ssp-email-check",
+    "States": {
+      "ssp-email-check": {
+        "Type": "Task",
+        "Resource": "arn:aws:states:::lambda:invoke",
+        "OutputPath": "$.Payload",
+        "Parameters": {
+          "Payload.$": "$",
+          "FunctionName": "${lambda_arn}"
+        },
+        "Retry": [
+          {
+            "ErrorEquals": [
+              "Lambda.ServiceException",
+              "Lambda.AWSLambdaException",
+              "Lambda.SdkClientException",
+              "Lambda.TooManyRequestsException"
+            ],
+            "IntervalSeconds": 3,
+            "MaxAttempts": 3,
+            "BackoffRate": 1
+          }
+        ],
+        "Next": "Choice",
+        "Catch": [
+          {
+            "ErrorEquals": [
+              "States.ALL"
+            ],
+            "Next": "Error Notification"
+          }
+        ]
+      },
+      "Choice": {
+        "Type": "Choice",
+        "Choices": [
+          {
+            "Variable": "$.email_status",
+            "StringMatches": "Valid",
+            "Next": "EmailValid"
+          },
+          {
+            "Variable": "$.email_status",
+            "StringMatches": "Invalid",
+            "Next": "ssp-fetch-email"
+          }
+        ]
+      },
+      "ssp-fetch-email": {
+        "Type": "Task",
+        "Resource": "arn:aws:states:::lambda:invoke",
+        "OutputPath": "$.Payload",
+        "Parameters": {
+          "Payload.$": "$",
+          "FunctionName": "${lambda_arn}"
+        },
+        "Retry": [
+          {
+            "ErrorEquals": [
+              "Lambda.ServiceException",
+              "Lambda.AWSLambdaException",
+              "Lambda.SdkClientException",
+              "Lambda.TooManyRequestsException"
+            ],
+            "IntervalSeconds": 1,
+            "MaxAttempts": 3,
+            "BackoffRate": 2
+          }
+        ],
+        "Next": "EmailStatus",
+        "Catch": [
+          {
+            "ErrorEquals": [
+              "States.ALL"
+            ],
+            "Next": "Error Notification"
+          }
+        ]
+      },
+      "EmailStatus": {
+        "Type": "Choice",
+        "Choices": [
+          {
+            "Variable": "$.email_status",
+            "StringMatches": "Valid",
+            "Next": "EmailFetch"
+          }
+        ],
+        "Default": "Error Notification"
+      },
+      "Error Notification": {
+        "Type": "Task",
+        "Resource": "arn:aws:states:::sns:publish",
+        "Parameters": {
+          "Message.$": "$",
+          "TopicArn": ""
+        },
+        "Next": "Fail"
+      },
+      "EmailFetch": {
+        "Type": "Pass",
+        "Next": "ssp-account-request-New"
+      },
+      "ssp-account-request-New": {
+        "Type": "Task",
+        "Resource": "arn:aws:states:::lambda:invoke",
+        "OutputPath": "$.Payload",
+        "Parameters": {
+          "Payload.$": "$",
+          "FunctionName": "${lambda_arn}"
+        },
+        "Retry": [
+          {
+            "ErrorEquals": [
+              "Lambda.ServiceException",
+              "Lambda.AWSLambdaException",
+              "Lambda.SdkClientException",
+              "Lambda.TooManyRequestsException"
+            ],
+            "IntervalSeconds": 1,
+            "MaxAttempts": 3,
+            "BackoffRate": 2
+          }
+        ],
+        "Catch": [
+          {
+            "ErrorEquals": [
+              "States.ALL"
+            ],
+            "Next": "Error Notification"
+          }
+        ],
+        "Next": "Success"
+      },
+      "Success": {
+        "Type": "Succeed"
+      },
+      "EmailValid": {
+        "Type": "Pass",
+        "Next": "ssp-account-request-New"
+      },
+      "Fail": {
+        "Type": "Fail"
+      }
+    }
+  }
