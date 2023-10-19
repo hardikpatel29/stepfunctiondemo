@@ -8,5 +8,7 @@ Before getting started, make sure you have the following prerequisites in place:
     Terraform installed on your local machine.
     AWS credentials configured with the necessary permissions for Step Function.
 
+### Logging
 
+NOTE : Logging is not configured in module.
 
